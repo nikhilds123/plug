@@ -278,6 +278,14 @@ textarea.inp{resize:vertical;min-height:92px;line-height:1.6}
 
 .toast{position:fixed;left:50%;bottom:calc(28px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(12px);background:var(--tx);color:var(--paper);font-size:13px;font-weight:500;padding:11px 18px;border-radius:12px;box-shadow:var(--shadow-lift);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.demo-modal{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));background:rgba(22,20,18,.42);animation:dmIn .16s ease-out}
+.demo-modal .dm-box{width:100%;max-width:440px;background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-lift);padding:24px 24px 20px}
+.demo-modal .dm-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--warn-tint);color:var(--warn);margin-bottom:14px}
+.demo-modal h3{font-family:var(--disp);font-weight:400;font-size:24px;line-height:1.2;letter-spacing:-.01em;margin:0 0 8px}
+.demo-modal p{margin:0;color:var(--tx-2);font-size:14px;line-height:1.55}
+.demo-modal .dm-acts{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+@keyframes dmIn{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.demo-modal{animation:none}}
 
 .spin{width:13px;height:13px;border:1.5px solid var(--line-2);border-top-color:var(--tx);border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:-2px}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -1347,7 +1355,7 @@ function viewIntake(){
   if(!(S.capsReady && !S.sample)) h += '<div class="ic-alt"><button class="btn-3" id="loadEx">Or see the Backloggd example</button></div>';
   h += aoPanel();
   if(S.capsReady && !S.sample){
-    h += '<div class="notice bad"><span>&#9888;</span><div><b>Live analysis is unavailable here.</b> It runs on claude.ai. On this site you can explore a full example analysis of Backloggd.<div style="margin-top:10px"><button class="btn-3" id="loadEx">Or see the Backloggd example</button></div></div></div>';
+    /* no notice here: the modal on \"Find my first users\" explains it */
   } else if(S.capsReady && !S.mcp){
     h += '<div class="notice"><span>&#9432;</span><div><b>Link reading is off on this view.</b> Your product page won\'t be fetched, so fill in the description and the analysis will use that instead.</div></div>';
   }
@@ -2899,7 +2907,7 @@ document.addEventListener("input", function(ev){
 
 function onGo(){
   var url = normUrl(S.form.url), desc = txt(S.form.desc).trim();
-  if(!S.sample){ runExampleDemo(); toast("Live analysis needs claude.ai. Running the Backloggd example"); return; }
+  if(!S.sample){ demoModal(); return; }
   if(!url && desc.length < 20){ toast("Add a link, or a sentence about what you built"); return; }
   var proj = { id:uid(), createdAt:Date.now(), url:url, desc:desc, siteRead:false, dna:null, inferred:[],
     plan:null, planStatus:"idle", planDirty:false, planError:null, posted:{}, checks:{}, interest:{}, example:false };
@@ -2996,6 +3004,31 @@ function exampleProject(){
       ]
     }
   };
+}
+
+/* Shown when someone asks for a live analysis on a view without Claude. */
+function demoModal(){
+  if(el("demoModal")) return;
+  var prev = document.activeElement;
+  var m = document.createElement("div");
+  m.className = "demo-modal"; m.id = "demoModal";
+  m.innerHTML = '<div class="dm-box" role="dialog" aria-modal="true" aria-labelledby="dmTitle" aria-describedby="dmText">'
+    + '<div class="dm-ic" aria-hidden="true">&#9888;</div>'
+    + '<h3 id="dmTitle">Live analysis is unavailable here</h3>'
+    + '<p id="dmText">It runs on claude.ai. On this site you can explore a full example analysis of Backloggd.</p>'
+    + '<div class="dm-acts"><button class="btn-2" id="dmCancel">Cancel</button><button class="btn" id="dmGo">Continue to example</button></div></div>';
+  function close(){ document.removeEventListener("keydown", onKey, true); m.remove(); if(prev && prev.focus) prev.focus(); }
+  function onKey(e){
+    if(e.key==="Escape"){ e.preventDefault(); close(); }
+    else if(e.key==="Tab"){ var a=el("dmCancel"), b=el("dmGo"); if(e.shiftKey && document.activeElement===a){ e.preventDefault(); b.focus(); } else if(!e.shiftKey && document.activeElement===b){ e.preventDefault(); a.focus(); } }
+  }
+  m.addEventListener("click", function(e){
+    if(e.target===m || e.target.id==="dmCancel"){ close(); return; }
+    if(e.target.id==="dmGo"){ close(); runExampleDemo(); }
+  });
+  document.addEventListener("keydown", onKey, true);
+  document.body.appendChild(m);
+  el("dmGo").focus();
 }
 
 /* Scripted example run: no Claude runtime on this view, so walk the real
