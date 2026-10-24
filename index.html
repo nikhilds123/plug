@@ -996,6 +996,9 @@ function load(){
   try{ var r = localStorage.getItem(KEY); S.projects = r ? JSON.parse(r) : []; }
   catch(e){ S.projects = []; }
   if(!Array.isArray(S.projects)) S.projects = [];
+  /* a scripted example interrupted by a reload: drop it if unprofiled, let its plan run again */
+  S.projects = S.projects.filter(function(p){ return !(p && p.demo && !p.dna); });
+  S.projects.forEach(function(p){ if(p.demo && p.planStatus==="running") p.planStatus="idle"; });
 }
 function save(){
   try{ localStorage.setItem(KEY, JSON.stringify(S.projects)); }catch(e){}
@@ -1204,6 +1207,7 @@ function generateDna(url, desc, site, onText, signal, aoCtx){
 }
 
 function generatePlan(proj, onText, signal){
+  if(proj.demo && !S.sample) return demoPlan();
   return runSample(planPrompt(proj.dna), onText, signal).then(function(p){
     if(!p || typeof p!=="object") throw {code:"invalid_json",message:"empty"};
     p.positioning = p.positioning || {};
@@ -2520,6 +2524,16 @@ function startAnalysis(proj){
     setTimeout(function(){ S.an.stageFail=-1; toDna(proj, null); }, 1000);
     return;
   }
+  if(proj.demo && !S.sample){
+    setTimeout(function(){
+      if(!S.an) return;
+      proj.siteRead = true; save();
+      S.an.notes[0] = "Read backloggd.com";
+      tick("scout", "found Backloggd \u00b7 a video game collection tracker");
+      advanceToDna(proj, {title:"Backloggd"});
+    }, 1600);
+    return;
+  }
   if(!S.mcp){
     S.an.notes[0] = "Link reading is off on this view — using your description";
     S.an.stageFail = 0; render();
@@ -2566,9 +2580,9 @@ function advanceToDna(proj, site, aoCtx){
   if(!aoCtx) proj.dnaSource = {by:"claude"};
   S.an.stage = 1; render(); tickStages(DNA_STAGES.length);
   var firstText = false;
-  generateDna(proj.url, proj.desc, site, function(u){
+  (proj.demo && !S.sample ? demoDna() : generateDna(proj.url, proj.desc, site, function(u){
     if(!firstText && S.an){ firstText=true; stopTick(); S.an.stage = DNA_STAGES.length-1; tick("scout","writing the profile"); render(); }
-  }, null, aoCtx).then(function(dna){
+  }, null, aoCtx)).then(function(dna){
     finishDna(proj, dna);
   }, function(e){
     stopTick();
@@ -2769,7 +2783,7 @@ document.addEventListener("click", function(ev){
   if(id==="example"){ loadExample(); return; }
   if(id==="start"){ window.scrollTo({top:0,behavior:"smooth"}); var u=el("f-url"); if(u) setTimeout(function(){ u.focus({preventScroll:true}); },400); return; }
   if(t.id==="go"){ onGo(); return; }
-  if(t.id==="loadEx"){ loadExample(); return; }
+  if(t.id==="loadEx"){ if(!S.sample) runExampleDemo(); else loadExample(); return; }
   if(t.id==="home"){ S.screen="intake"; S.an=null; stopTick(); render(); return; }
   if(t.id==="toSmm"){ S.module="smm"; render(); return; }
   if(t.id==="buildPlan"){ if(p){ p.planStatus="idle"; goPlan(p);} return; }
@@ -2864,8 +2878,8 @@ document.addEventListener("input", function(ev){
 
 function onGo(){
   var url = normUrl(S.form.url), desc = txt(S.form.desc).trim();
+  if(!S.sample){ runExampleDemo(); toast("Live analysis needs claude.ai. Running the Backloggd example"); return; }
   if(!url && desc.length < 20){ toast("Add a link, or a sentence about what you built"); return; }
-  if(!S.sample){ loadExample(); toast("Live analysis needs claude.ai. Showing the Backloggd example"); return; }
   var proj = { id:uid(), createdAt:Date.now(), url:url, desc:desc, siteRead:false, dna:null, inferred:[],
     plan:null, planStatus:"idle", planDirty:false, planError:null, posted:{}, checks:{}, interest:{}, example:false };
   S.projects.unshift(proj); S.activeId = proj.id; save();
@@ -2889,8 +2903,14 @@ function onFallback(){
 
 /* ============ example ============ */
 function loadExample(){
-  for(var i=0;i<S.projects.length;i++) if(S.projects[i].example && S.projects[i].url==="https://backloggd.com"){ S.activeId=S.projects[i].id; S.screen="dashboard"; S.module="smm"; render(); window.scrollTo(0,0); return; }
-  var p = {
+  for(var i=0;i<S.projects.length;i++) if(S.projects[i].example && S.projects[i].url==="https://backloggd.com" && S.projects[i].planStatus==="ready"){ S.activeId=S.projects[i].id; S.screen="dashboard"; S.module="smm"; render(); window.scrollTo(0,0); return; }
+  var p = exampleProject();
+  S.projects.unshift(p); S.activeId=p.id; save();
+  S.screen="dashboard"; S.module="smm"; render(); window.scrollTo(0,0);
+  toast("Example: Backloggd. Pre-written, not generated live");
+}
+function exampleProject(){
+  return {
     id: uid(), createdAt: Date.now(), url:"https://backloggd.com", desc:"A website for logging, rating and reviewing the video games you play, with a backlog, lists and a social feed. Letterboxd for games.",
     siteRead:true, example:true, planStatus:"ready", planDirty:false, planError:null, posted:{}, checks:{}, interest:{},
     inferred:["who.ageRange","who.genderSkew","who.spendingPower","drivers.topObjection","voice.hoursPerWeek","voice.budget","voice.existingAudience","voice.goal90d"],
@@ -2955,9 +2975,39 @@ function loadExample(){
       ]
     }
   };
-  S.projects.unshift(p); S.activeId=p.id; save();
-  S.screen="dashboard"; S.module="smm"; render(); window.scrollTo(0,0);
-  toast("Example: Backloggd. Pre-written, not generated live");
+}
+
+/* Scripted example run: no Claude runtime on this view, so walk the real
+   analysing -> review -> plan screens with the pre-written Backloggd data. */
+function runExampleDemo(){
+  S.projects = S.projects.filter(function(q){ return !(q.example && q.url==="https://backloggd.com"); });
+  var ex = exampleProject();
+  var proj = { id:uid(), createdAt:Date.now(), url:ex.url, desc:ex.desc, siteRead:false, dna:null, inferred:[],
+    plan:null, planStatus:"idle", planDirty:false, planError:null, posted:{}, checks:{}, interest:{}, example:true, demo:true };
+  S.form.url = "backloggd.com"; S.form.desc = ex.desc;
+  S.projects.unshift(proj); S.activeId = proj.id; save();
+  startAnalysis(proj);
+  window.scrollTo(0,0);
+}
+function demoDna(){
+  var ex = exampleProject(), dna = JSON.parse(JSON.stringify(ex.dna));
+  dna.inferred = ex.inferred.slice();
+  var lines = ["sizing up players who log 20+ games a year","spotting the Letterboxd crossover","weighing the missing mobile app"];
+  lines.forEach(function(l, i){ setTimeout(function(){ if(S.an && S.an.kind==="dna"){ tick("scout", l); render(); } }, 1400 + i*2600); });
+  return new Promise(function(res){ setTimeout(function(){ res(dna); }, 8600); });
+}
+function demoPlan(){
+  var plan = JSON.parse(JSON.stringify(exampleProject().plan));
+  var msgs = {0:"found r/patientgamers, r/truegaming, r/backlog", 1:"r/patientgamers bans all self-promo", 2:"Reddit leads, SEO close behind", 3:"writing six posts, one per room"};
+  return new Promise(function(res){
+    var seen = -1, doneAt = 0;
+    var t = setInterval(function(){
+      var on = S.screen==="analyzing" && S.an && S.an.kind==="plan";
+      if(!on) return;
+      if(S.an.stage!==seen){ seen = S.an.stage; if(msgs[seen]){ tick(seen===3?"wire":"scout", msgs[seen]); render(); } }
+      if(S.an.stage >= S.an.stages.length-1){ doneAt = doneAt || Date.now(); if(Date.now()-doneAt > 2600){ clearInterval(t); res(plan); } }
+    }, 250);
+  });
 }
 
 /* ============ boot ============ */
