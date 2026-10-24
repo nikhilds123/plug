@@ -1336,10 +1336,10 @@ function viewIntake(){
   h += '<label class="ic-field" for="f-url"><span class="ic-lab">Product link</span><span class="ic-in">'+FI.globe+'<input id="f-url" type="url" inputmode="url" placeholder="yourproduct.com" value="'+esc(S.form.url)+'" autocomplete="off"></span></label>';
   h += '<label class="ic-field" for="f-desc"><span class="ic-lab">What does it do?</span><textarea class="ic-desc" id="f-desc" rows="3" placeholder="For example: a mobile app that lets you log, rate and review the video games you finish. Like Letterboxd, but for games.">'+esc(S.form.desc)+'</textarea></label>';
   h += '<div class="ic-foot"><span class="ic-hint">Add a link, a description, or both</span><button class="btn" id="go">Find my first users</button></div></div>';
-  h += '<div class="ic-alt"><button class="btn-3" id="loadEx">Or see the Backloggd example</button></div>';
+  if(!(S.capsReady && !S.sample)) h += '<div class="ic-alt"><button class="btn-3" id="loadEx">Or see the Backloggd example</button></div>';
   h += aoPanel();
   if(S.capsReady && !S.sample){
-    h += '<div class="notice bad"><span>&#9888;</span><div><b>Live analysis is unavailable here.</b> It runs on claude.ai. On this site you can explore a full example analysis of Backloggd.</div></div>';
+    h += '<div class="notice bad"><span>&#9888;</span><div><b>Live analysis is unavailable here.</b> It runs on claude.ai. On this site you can explore a full example analysis of Backloggd.<div style="margin-top:10px"><button class="btn-3" id="loadEx">Or see the Backloggd example</button></div></div></div>';
   } else if(S.capsReady && !S.mcp){
     h += '<div class="notice"><span>&#9432;</span><div><b>Link reading is off on this view.</b> Your product page won\'t be fetched, so fill in the description and the analysis will use that instead.</div></div>';
   }
