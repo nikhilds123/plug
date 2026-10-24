@@ -1,0 +1,8 @@
+# local / private
+.claude/
+tools/ao-last-run.json
+.DS_Store
+# backups and review screenshots
+app.before-*.html
+app.v1-dark.html
+_review/
