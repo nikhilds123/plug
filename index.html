@@ -2572,6 +2572,7 @@ function finishDna(proj, dna){
   if(!S.an) return;
   S.an.stage = DNA_STAGES.length; tick("scout","profile ready"); render();
   setTimeout(function(){
+    if(proj.demo && !S.sample){ S.an=null; goPlan(proj); return; } /* example run skips the review step */
     S.screen="dna"; S.an=null; render();
     startPlan(proj);
   }, 620);
