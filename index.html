@@ -120,6 +120,10 @@ hr.rule{border:0;border-top:1px solid var(--line);margin:0}
 .labs summary i{font-style:normal;color:var(--acc);font-weight:600}
 .labs-in{padding:0 14px 14px}
 .labs-in p{margin:0 0 10px;line-height:1.5}
+.labs-why{margin:0 0 10px;padding-left:18px;line-height:1.5;display:flex;flex-direction:column;gap:4px}
+.labs-link{color:var(--tx);font-weight:500;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--tx-3)}
+.labs-link:hover{text-decoration-color:var(--tx)}
+.labs-test{padding-top:10px;border-top:1px solid var(--line)}
 .labs-in code{font-family:ui-monospace,"Geist Mono",monospace;font-size:12px}
 .labs-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--tx);cursor:pointer}
 .labs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -1335,7 +1339,7 @@ function viewIntake(){
   var h = '<div class="frame">';
   h += '<div class="wrap">'+topbar(false)+'</div>';
   h += '<section class="hero">';
-  h += '<h1 class="disp">Tell us what you built.<br><em>We&rsquo;ll find where it belongs.</em></h1>';
+  h += '<h1 class="disp">'+HERO[0]+'<br><em>'+HERO[1]+'</em></h1>';
   h += '<div class="intake"><div class="icard">';
   h += '<label class="ic-field" for="f-url"><span class="ic-lab">Product link</span><span class="ic-in">'+FI.globe+'<input id="f-url" type="url" inputmode="url" placeholder="yourproduct.com" value="'+esc(S.form.url)+'" autocomplete="off"></span></label>';
   h += '<label class="ic-field" for="f-desc"><span class="ic-lab">What does it do?</span><textarea class="ic-desc" id="f-desc" rows="3" placeholder="For example: a mobile app that lets you log, rate and review the video games you finish. Like Letterboxd, but for games.">'+esc(S.form.desc)+'</textarea></label>';
@@ -2683,9 +2687,25 @@ function aoExtractDna(out){
   for(k in out){ if(!out.hasOwnProperty(k)) continue; v = out[k]; if(aoLooksDna(v)) return v; if(typeof v==="string" && v.length>200){ d = aoJsonIn(v); if(aoLooksDna(d)) return d; } }
   return null;
 }
+/* hero headline: one of four, picked once per page load */
+var HERO = [
+  ["You shipped it. Nobody showed up.", "We&rsquo;ll find where your first users already are."],
+  ["Building was the easy part.", "Finding your first 1,000 users is what we do."],
+  ["Stop posting into the void.", "Plug finds the rooms where your users already talk."],
+  ["Your first 1,000 users are out there.", "We&rsquo;ll tell you where, and what to post."]
+][Math.floor(Math.random()*4)];
+var AO_WHY_URL = "agenticorg.html";
 function aoPanel(){
   var h = '<details class="labs"' + (AO.on ? ' open' : '') + '><summary><span class="pill' + (AO.on ? ' pur' : '') + '">Labs</span> Analyse with AgenticOrg' + (AO.on ? ' <i>on</i>' : '') + '</summary><div class="labs-in">';
-  h += '<p>Test route: the product profile is built by an AgenticOrg agent instead of Claude. Built-in marketing agents are listed; a custom agent made in the AgenticOrg dashboard works too, paste its type slug. Needs this page open in the Claude desktop app with the <code>agenticorg</code> MCP server running. If the call fails for any reason, the normal Claude analysis runs instead.</p>';
+  h += '<p>Plug is an agent-driven marketing tool built to get you your first 1,000 users. Scout works out who your users are and where they gather, Wire writes the post each place accepts, Meter tracks what gets clicks and signups, and Coach learns from every round.</p>';
+  h += '<p>We tried to run the analysis step on AgenticOrg&rsquo;s agents and couldn&rsquo;t make it work:</p><ul class="labs-why">';
+  h += '<li>Their API blocks calls from web pages, so Plug can&rsquo;t reach it from the browser.</li>';
+  h += '<li>The only route that connects runs inside the Claude desktop app, for one person on one machine.</li>';
+  h += '<li>None of their agents read a website, so it added a step without adding anything.</li>';
+  h += '<li>Our custom agent failed on every run because the workspace&rsquo;s model setting was broken.</li></ul>';
+  h += '<p>So Plug uses Claude for the analysis for now. <a class="labs-link" href="'+AO_WHY_URL+'" target="_blank" rel="noopener">Read the full analysis</a></p>';
+  if(!S.mcp) return h + '</div></details>';
+  h += '<p class="labs-test">Test route: build the product profile with an AgenticOrg agent instead of Claude. Needs this page open in the Claude desktop app with the <code>agenticorg</code> MCP server running. If the call fails, the normal Claude analysis runs instead.</p>';
   h += '<label class="labs-row"><input type="checkbox" id="ao-on"' + (AO.on ? ' checked' : '') + '> Use AgenticOrg for the company analysis</label>';
   h += '<div class="labs-grid"><label><span class="ic-lab">Agent type slug</span><input class="inp" id="ao-agent" list="ao-agents" value="' + esc(AO.agent) + '" placeholder="competitive_intel, or your custom agent\'s type" autocomplete="off" spellcheck="false"><datalist id="ao-agents">';
   AO_AGENTS.forEach(function(a){ h += '<option value="' + a[0] + '">' + a[1] + '</option>'; });
